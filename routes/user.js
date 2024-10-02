@@ -1,22 +1,22 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const uid2 = require("uid2");
-const SHA256 = require("crypto-js/sha256");
-const encBase64 = require("crypto-js/enc-base64");
-const cloudinary = require("cloudinary").v2;
-const convertToBase64 = require("../utils/convertToBase64");
-const Diary = require("../models/diaries");
-const Travel = require("../models/travels");
-const User = require("../models/users");
-const isAuthenticated = require("../middleware/isAuthenticated");
-const { check, validationResult } = require("express-validator");
+const uid2 = require('uid2');
+const SHA256 = require('crypto-js/sha256');
+const encBase64 = require('crypto-js/enc-base64');
+const cloudinary = require('cloudinary').v2;
+const convertToBase64 = require('../utils/convertToBase64');
+const Diary = require('../models/diaries');
+const Travel = require('../models/travels');
+const User = require('../models/users');
+const isAuthenticated = require('../middleware/isAuthenticated');
+const { check, validationResult } = require('express-validator');
 
 router.post(
-  "/signup",
+  '/signup',
   [
-    check("email")
+    check('email')
       .isEmail()
-      .withMessage("Invalid email address format")
+      .withMessage('Invalid email address format')
       .normalizeEmail(),
   ],
   async (req, res) => {
@@ -36,7 +36,7 @@ router.post(
       if (user) {
         return res
           .status(409)
-          .json({ message: "This email already has an account" });
+          .json({ message: 'This email already has an account' });
       }
       if (req.body.username && req.body.email && req.body.password) {
         const token = uid2(64);
@@ -64,11 +64,11 @@ router.post(
 
             {
               folder: `memories/users/${newUser._id}`,
-              public_id: "avatar",
+              public_id: 'avatar',
             }
           );
           ///${newUser._id}
-          //! console.log(result); celui qui renvoie toutes les infos utilisateurs
+          console.log(result); //celui qui renvoie toutes les infos utilisateurs
           // console.log(req.files.avatar);
           newUser.account.avatar = result.secure_url;
           // newUser.account.avatar = result.public_id;
@@ -87,7 +87,7 @@ router.post(
         });
         console.log(newUser);
       } else {
-        res.status(401).json({ message: "missing parameters" });
+        res.status(401).json({ message: 'missing parameters' });
       }
     } catch (error) {
       console.log(error.message);
@@ -97,12 +97,12 @@ router.post(
 );
 
 router.post(
-  "/login",
+  '/login',
 
   [
-    check("email")
+    check('email')
       .isEmail()
-      .withMessage("Invalid email address format")
+      .withMessage('Invalid email address format')
       .normalizeEmail(),
   ],
   async (req, res) => {
@@ -121,7 +121,7 @@ router.post(
       if (!user) {
         return res.status(404).json({
           result: false,
-          error: "User not found",
+          error: 'User not found',
         });
       }
 
@@ -141,24 +141,24 @@ router.post(
           },
         });
       } else {
-        return res.status(401).json({ result: false, error: "Unauthorized" });
+        return res.status(401).json({ result: false, error: 'Unauthorized' });
       }
     } catch (error) {
       console.error(error.message);
       return res
         .status(500)
-        .json({ result: false, error: "An error occurred" });
+        .json({ result: false, error: 'An error occurred' });
     }
   }
 );
 
 // TODO DELETE USER
 
-router.delete("/deleteUser", async (req, res) => {
+router.delete('/deleteUser', async (req, res) => {
   // console.log(req.query);
   try {
     if (!req.query.token) {
-      res.status(401).json({ result: false, message: "user not found" });
+      res.status(401).json({ result: false, message: 'user not found' });
       return;
     }
     const userToDelete = await User.findOneAndDelete({
@@ -169,7 +169,7 @@ router.delete("/deleteUser", async (req, res) => {
       return res.status(402).json({
         result: false,
         message:
-          "your account is not found maybe you have to go create one new and travel",
+          'your account is not found maybe you have to go create one new and travel',
       });
     }
     if (userToDelete) {
@@ -198,18 +198,18 @@ router.delete("/deleteUser", async (req, res) => {
     await userToDelete.remove();
   } catch (error) {
     console.error({ error: error.message });
-    res.status(500).json({ result: false, error: "An error occurred" });
+    res.status(500).json({ result: false, error: 'An error occurred' });
   }
 });
 // TODO UPDATE USER PROFIL AND TRY AGAIN WITH AVATAR
 
 router.put(
-  "/updateUser",
+  '/updateUser',
   isAuthenticated,
   [
-    check("email")
+    check('email')
       .isEmail()
-      .withMessage("Invalid email address format")
+      .withMessage('Invalid email address format')
       .normalizeEmail(),
   ],
   async (req, res) => {
@@ -226,7 +226,7 @@ router.put(
       const userUpdates = {};
 
       if (req.body.username)
-        userUpdates["account.username"] = req.body.username;
+        userUpdates['account.username'] = req.body.username;
       if (req.body.firstname) userUpdates.firstname = req.body.firstname;
       if (req.body.lastname) userUpdates.lastname = req.body.lastname;
       if (req.body.email) userUpdates.email = req.body.email;
@@ -240,11 +240,11 @@ router.put(
       }
 
       if (req.files?.avatar) {
-        if (!userUpdates["account.avatar"]) userUpdates["account.avatar"] = {};
+        if (!userUpdates['account.avatar']) userUpdates['account.avatar'] = {};
 
-        if (userUpdates["account.avatar"].public_id) {
+        if (userUpdates['account.avatar'].public_id) {
           await cloudinary.uploader.destroy(
-            userUpdates["account.avatar"].public_id
+            userUpdates['account.avatar'].public_id
           );
         }
 
@@ -252,12 +252,12 @@ router.put(
           convertToBase64(req.files.avatar),
           {
             folder: `memories/users/${userId}`,
-            public_id: "avatar",
+            public_id: 'avatar',
           }
         );
-        userUpdates["account.avatar"].secure_url =
+        userUpdates['account.avatar'].secure_url =
           uploadedUserAccountAvatar.secure_url;
-        userUpdates["account.avatar"].public_id =
+        userUpdates['account.avatar'].public_id =
           uploadedUserAccountAvatar.public_id;
       }
 
@@ -268,13 +268,13 @@ router.put(
       );
 
       if (!updatedUser) {
-        return res.status(404).json({ result: false, error: "User not found" });
+        return res.status(404).json({ result: false, error: 'User not found' });
       }
 
       res.status(200).json({ result: true, user: updatedUser });
     } catch (error) {
       console.error({ error: error.message });
-      res.status(500).json({ result: false, error: "An error occurred" });
+      res.status(500).json({ result: false, error: 'An error occurred' });
     }
   }
 );
