@@ -11,6 +11,95 @@ const User = require('../models/users');
 const isAuthenticated = require('../middleware/isAuthenticated');
 const { check, validationResult } = require('express-validator');
 
+// router.post(
+//   '/signup',
+//   [
+//     check('email')
+//       .isEmail()
+//       .withMessage('Invalid email address format')
+//       .normalizeEmail(),
+//   ],
+//   async (req, res) => {
+//     const errors = validationResult(req);
+
+//     if (!errors.isEmpty()) {
+//       return res.status(400).json({
+//         result: false,
+//         errors: errors.array(),
+//       });
+//     }
+//     try {
+//       const user = await User.findOne({
+//         email: req.body.email,
+//       });
+//       console.log(user);
+//       if (user) {
+//         return res
+//           .status(409)
+//           .json({ message: 'This email already has an account' });
+//       }
+//       if (req.body.username && req.body.email && req.body.password) {
+//         const token = uid2(64);
+//         const salt = uid2(16);
+
+//         const hash = SHA256(req.body.password + salt).toString(encBase64);
+
+//         const newUser = await new User({
+//           salt: salt,
+//           hash: hash,
+//           token: token,
+//           email: req.body.email,
+//           firstname: req.body.firstname,
+//           lastname: req.body.lastname,
+//           account: {
+//             username: req.body.username,
+//           },
+
+//           //!  password: password, ne pas enregistrer où le placer dans la nouvelle variable
+//         });
+
+//         if (req.files && req.files?.avatar) {
+//           try {
+//             const result = await cloudinary.uploader.upload(
+//               convertToBase64(req.files.avatar),
+
+//               {
+//                 folder: `memories/users/${newUser._id}`,
+//                 public_id: 'avatar',
+//               }
+//             );
+//             ///${newUser._id}
+//             // console.log(result); //celui qui renvoie toutes les infos utilisateurs
+//             // console.log(req.files.avatar);
+//             newUser.account.avatar = result.secure_url;
+//             // newUser.account.avatar = result.public_id;
+//           } catch (error) {
+//             console.error('Cloudinary upload error:', error);
+//             return res.status(500).json({ message: 'Avatar upload failed' });
+//           }
+//         }
+
+//         await newUser.save();
+//         res.status(201).json({
+//           user: {
+//             _id: newUser._id,
+//             token: newUser.token,
+//             email: newUser.email,
+//             account: newUser.account,
+//             lastname: newUser.lastname,
+//             firstname: newUser.firstname,
+//           },
+//         });
+//         // console.log(newUser);
+//       } else {
+//         res.status(401).json({ message: 'missing parameters' });
+//       }
+//     } catch (error) {
+//       console.log(error.message);
+//       res.status(500).json({ message: error.message });
+//     }
+//   }
+// );
 router.post(
   '/signup',
   [
@@ -32,19 +121,18 @@ router.post(
       const user = await User.findOne({
         email: req.body.email,
       });
-      console.log(user);
       if (user) {
         return res
           .status(409)
           .json({ message: 'This email already has an account' });
       }
+
       if (req.body.username && req.body.email && req.body.password) {
         const token = uid2(64);
         const salt = uid2(16);
-
         const hash = SHA256(req.body.password + salt).toString(encBase64);
 
-        const newUser = await new User({
+        const newUser = new User({
           salt: salt,
           hash: hash,
           token: token,
@@ -54,24 +142,34 @@ router.post(
           account: {
             username: req.body.username,
           },
-
-          //!  password: password, ne pas enregistrer où le placer dans la nouvelle variable
         });
 
-        if (req.files && req.files?.avatar) {
-          const result = await cloudinary.uploader.upload(
-            convertToBase64(req.files.avatar),
-
-            {
+        if (req.files && req.files.avatar) {
+          try {
+            const base64Image = await convertToBase64(req.files.avatar);
+            console.log(base64Image);
+            // Upload optimized image to Cloudinary
+            const uploadResult = await cloudinary.uploader.upload(base64Image, {
               folder: `memories/users/${newUser._id}`,
               public_id: 'avatar',
-            }
-          );
-          ///${newUser._id}
-          console.log(result); //celui qui renvoie toutes les infos utilisateurs
-          // console.log(req.files.avatar);
-          newUser.account.avatar = result.secure_url;
-          // newUser.account.avatar = result.public_id;
+              transformation: [
+                {
+                  width: 500,
+                  height: 500,
+                  crop: 'limit',
+                  gravity: 'auto',
+                  fetch_format: 'auto',
+                  quality: 'auto',
+                }, // Transformation pour ajuster la taille
+              ],
+            });
+
+            // Stockez l'URL sécurisée de l'image
+            newUser.account.avatar = uploadResult.secure_url;
+          } catch (error) {
+            console.error('Cloudinary upload error:', error);
+            return res.status(500).json({ message: 'Avatar upload failed' });
+          }
         }
 
         await newUser.save();
@@ -85,7 +183,6 @@ router.post(
             firstname: newUser.firstname,
           },
         });
-        console.log(newUser);
       } else {
         res.status(401).json({ message: 'missing parameters' });
       }
@@ -225,8 +322,7 @@ router.put(
       const userId = req.user._id;
       const userUpdates = {};
 
-      if (req.body.username)
-        userUpdates['account.username'] = req.body.username;
+      if (req.body.username) userUpdates.account.username = req.body.username;
       if (req.body.firstname) userUpdates.firstname = req.body.firstname;
       if (req.body.lastname) userUpdates.lastname = req.body.lastname;
       if (req.body.email) userUpdates.email = req.body.email;
